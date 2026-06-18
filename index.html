@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ReceiptVault AI — Expense Intelligence</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <style>
 /* ═══════════════════════════════════════════════════════════
@@ -533,6 +535,86 @@ nav.snav { padding: 10px 8px; flex: 1; }
   .search-box { display: none; }
   .upload-btn span { display: none; }
 }
+/* ── AUTH SCREEN ── */
+#authScreen {
+  position: fixed; inset: 0; z-index: 1000; background: var(--bg);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+  overflow-y: auto;
+}
+.auth-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow2); padding: 32px 30px; width: 100%; max-width: 400px;
+  position: relative; overflow: hidden;
+}
+.auth-card::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--tape); }
+.auth-logo { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 22px; }
+.auth-logo .logo-mark { width: 46px; height: 46px; border-radius: 12px; }
+.auth-logo .logo-mark svg { width: 22px; height: 22px; }
+.auth-logo .name { font-size: 17px; font-weight: 800; letter-spacing: -.4px; }
+.auth-logo .tag { font-size: 11px; color: var(--tx3); text-transform: uppercase; letter-spacing: .7px; }
+.auth-tabs { display: flex; background: var(--bg2); border-radius: 9px; padding: 3px; margin-bottom: 20px; gap: 3px; }
+.auth-tab { flex: 1; padding: 8px 0; text-align: center; font-size: 13px; font-weight: 600;
+  color: var(--tx2); border: none; background: none; border-radius: 7px; cursor: pointer; transition: all .15s; }
+.auth-tab.active { background: var(--surface); color: var(--accent); box-shadow: var(--shadow); }
+.auth-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+.auth-field label { font-size: 11px; font-weight: 700; color: var(--tx3); text-transform: uppercase; letter-spacing: .5px; }
+.auth-field input {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 9px;
+  padding: 10px 12px; color: var(--tx1); outline: none; font-size: 14px; transition: border-color .15s;
+}
+.auth-field input:focus { border-color: var(--accent); background: var(--surface); }
+.auth-error {
+  background: var(--red-bg); border: 1px solid var(--red); color: var(--red);
+  border-radius: 8px; padding: 9px 12px; font-size: 12px; margin-bottom: 14px;
+  display: none; align-items: center; gap: 7px;
+}
+.auth-error.show { display: flex; }
+.auth-submit {
+  width: 100%; padding: 11px 0; border-radius: 9px; border: none;
+  background: var(--accent); color: #fff; font-size: 14px; font-weight: 700;
+  cursor: pointer; transition: all .15s; display: flex; align-items: center; justify-content: center; gap: 8px;
+  box-shadow: 0 2px 8px rgba(79,70,229,.3);
+}
+.auth-submit:hover { background: #4338ca; transform: translateY(-1px); }
+.auth-submit:disabled { opacity: .55; cursor: not-allowed; pointer-events: none; transform: none; }
+.auth-divider { display: flex; align-items: center; gap: 10px; margin: 18px 0; color: var(--tx3); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+.auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.auth-google {
+  width: 100%; padding: 10px 0; border-radius: 9px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--tx1); font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all .15s; display: flex; align-items: center; justify-content: center; gap: 9px;
+}
+.auth-google:hover { border-color: var(--border2); background: var(--bg2); }
+.auth-google:disabled { opacity: .55; cursor: not-allowed; pointer-events: none; }
+.auth-google svg { width: 17px; height: 17px; flex-shrink: 0; }
+.auth-foot { text-align: center; font-size: 12px; color: var(--tx3); margin-top: 18px; }
+.auth-foot a { font-weight: 600; cursor: pointer; }
+.auth-spinner {
+  width: 15px; height: 15px; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff;
+  border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0;
+}
+.user-chip {
+  display: flex; align-items: center; gap: 9px; padding: 9px 10px; border-radius: 9px;
+  background: var(--bg2); margin: 0 8px 8px;
+}
+.user-avatar {
+  width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;
+  flex-shrink: 0; overflow: hidden;
+}
+.user-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.user-info { flex: 1; min-width: 0; }
+.user-name { font-size: 12px; font-weight: 600; color: var(--tx1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.user-email { font-size: 10px; color: var(--tx3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.logout-btn {
+  width: 28px; height: 28px; border-radius: 7px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--tx2); display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all .15s; flex-shrink: 0; font-size: 11px;
+}
+.logout-btn:hover { color: var(--red); border-color: var(--red); background: var(--red-bg); }
+#app-root { display: none; }
+#app-root.ready { display: flex; }
+
 @media print {
   .sidebar, .topbar, .toast-stack, .proc-actions, .table-actions,
   .pagination, .table-controls, .page-actions { display: none !important; }
@@ -549,7 +631,49 @@ nav.snav { padding: 10px 8px; flex: 1; }
   <p id="loadingMsg">Processing receipt…</p>
 </div>
 
-<div class="app">
+<!-- ═══════════════ AUTH SCREEN ═══════════════ -->
+<div id="authScreen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="logo-mark">
+        <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
+      </div>
+      <div class="name">ReceiptVault AI</div>
+      <div class="tag">Expense Intelligence</div>
+    </div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">Log In</button>
+      <button class="auth-tab" id="tabSignup" onclick="switchAuthTab('signup')">Sign Up</button>
+    </div>
+
+    <div class="auth-error" id="authError"><i class="fas fa-exclamation-circle"></i><span id="authErrorText"></span></div>
+
+    <!-- LOGIN FORM -->
+    <div id="loginForm">
+      <div class="auth-field"><label>Email</label><input type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email"></div>
+      <div class="auth-field"><label>Password</label><input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password"></div>
+      <button class="auth-submit" id="loginBtn" onclick="doLogin()"><i class="fas fa-sign-in-alt"></i><span>Log In</span></button>
+    </div>
+
+    <!-- SIGNUP FORM -->
+    <div id="signupForm" style="display:none">
+      <div class="auth-field"><label>Email</label><input type="email" id="signupEmail" placeholder="you@example.com" autocomplete="email"></div>
+      <div class="auth-field"><label>Password</label><input type="password" id="signupPassword" placeholder="At least 6 characters" autocomplete="new-password"></div>
+      <button class="auth-submit" id="signupBtn" onclick="doSignup()"><i class="fas fa-user-plus"></i><span>Create Account</span></button>
+    </div>
+
+    <div class="auth-divider">or continue with</div>
+    <button class="auth-google" id="googleBtn" onclick="doGoogleSignIn()">
+      <svg viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6 29.6 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.7-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 16 18.9 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6 29.6 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.5 0 10.4-1.8 14.1-5.1l-6.5-5.5C29.6 35.4 27 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.6 5.1C9.6 39.6 16.3 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.2 4.3-4.1 5.7l6.5 5.5C41.5 35.8 44 30.4 44 24c0-1.3-.1-2.7-.4-3.9z"/></svg>
+      <span id="googleBtnText">Sign in with Google</span>
+    </button>
+
+    <div class="auth-foot" id="authFoot">Don't have an account? <a onclick="switchAuthTab('signup')">Sign up</a></div>
+  </div>
+</div>
+
+<div class="app" id="app-root">
 <!-- ═══════════════ SIDEBAR ═══════════════ -->
 <aside class="sidebar" id="sidebar">
   <div class="logo-wrap">
@@ -575,6 +699,14 @@ nav.snav { padding: 10px 8px; flex: 1; }
     <button class="nav-item" data-page="settings"><i class="fas fa-cog"></i>Settings</button>
   </nav>
   <div class="sidebar-footer">
+    <div class="user-chip">
+      <div class="user-avatar" id="userAvatar">U</div>
+      <div class="user-info">
+        <div class="user-name" id="userName">User</div>
+        <div class="user-email" id="userEmail">—</div>
+      </div>
+      <button class="logout-btn" id="logoutBtn" title="Log out" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i></button>
+    </div>
     <div class="storage-bar-wrap">
       <span>LocalStorage</span>
       <span id="storageAmt">0 KB</span>
@@ -858,9 +990,177 @@ nav.snav { padding: 10px 8px; flex: 1; }
 <script>
 'use strict';
 // ═══════════════════════════════════════════════════════════
-// STATE & STORAGE
+// FIREBASE CONFIG
+// ⚠️  PASTE YOUR OWN FIREBASE CONFIG BELOW — get it from:
+//     Firebase Console → Project Settings → General → Your apps → SDK setup
+//     This is required for login/signup/Google sign-in to work.
 // ═══════════════════════════════════════════════════════════
-const KEYS = { receipts:'rv_receipts', settings:'rv_settings', theme:'rv_theme' };
+const firebaseConfig = {
+  apiKey: "PASTE_HERE",
+  authDomain: "PASTE_HERE",
+  projectId: "PASTE_HERE",
+  appId: "PASTE_HERE"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+let currentUser = null;
+
+// ═══════════════════════════════════════════════════════════
+// AUTH UI — tab switching, errors, loading states
+// ═══════════════════════════════════════════════════════════
+function switchAuthTab(tab){
+  const isLogin = tab==='login';
+  el('tabLogin').classList.toggle('active', isLogin);
+  el('tabSignup').classList.toggle('active', !isLogin);
+  el('loginForm').style.display = isLogin?'block':'none';
+  el('signupForm').style.display = isLogin?'none':'block';
+  el('authFoot').innerHTML = isLogin
+    ? `Don't have an account? <a onclick="switchAuthTab('signup')">Sign up</a>`
+    : `Already have an account? <a onclick="switchAuthTab('login')">Log in</a>`;
+  hideAuthError();
+}
+function showAuthError(msg){ el('authErrorText').textContent=msg; el('authError').classList.add('show'); }
+function hideAuthError(){ el('authError').classList.remove('show'); }
+
+function setAuthLoading(which, loading){
+  // which: 'login' | 'signup' | 'google'
+  const map = {
+    login:  { btn:'loginBtn',  icon:'fas fa-sign-in-alt', label:'Log In' },
+    signup: { btn:'signupBtn', icon:'fas fa-user-plus',   label:'Create Account' },
+    google: { btn:'googleBtn', icon:null,                  label:'Sign in with Google' }
+  };
+  const cfg = map[which];
+  const btn = el(cfg.btn);
+  btn.disabled = loading;
+  ['loginBtn','signupBtn','googleBtn'].forEach(id=>{ if(id!==cfg.btn) el(id).disabled = loading; });
+  if(which==='google'){
+    el('googleBtnText').innerHTML = loading ? `<span class="auth-spinner" style="border-top-color:var(--accent);border-color:rgba(79,70,229,.25)"></span> Connecting…` : 'Sign in with Google';
+  } else {
+    btn.innerHTML = loading
+      ? `<span class="auth-spinner"></span><span>Please wait…</span>`
+      : `<i class="${cfg.icon}"></i><span>${cfg.label}</span>`;
+  }
+}
+
+// Friendly Firebase error message mapping
+function friendlyAuthError(code, fallback){
+  const map = {
+    'auth/wrong-password':        'Incorrect password. Please try again.',
+    'auth/user-not-found':        'No account found with that email.',
+    'auth/invalid-credential':    'Incorrect email or password.',
+    'auth/invalid-login-credentials': 'Incorrect email or password.',
+    'auth/email-already-in-use':  'That email is already registered. Try logging in instead.',
+    'auth/weak-password':         'Password should be at least 6 characters.',
+    'auth/invalid-email':         'Please enter a valid email address.',
+    'auth/too-many-requests':     'Too many attempts. Please wait a moment and try again.',
+    'auth/network-request-failed':'Network error. Check your internet connection.',
+    'auth/popup-closed-by-user':  'Google sign-in was cancelled.',
+    'auth/cancelled-popup-request':'Google sign-in was cancelled.',
+    'auth/operation-not-allowed': 'This sign-in method is not enabled for this project.',
+    'auth/configuration-not-found':'Firebase is not configured yet. Paste your firebaseConfig in the code.',
+  };
+  return map[code] || fallback || 'Something went wrong. Please try again.';
+}
+
+async function doLogin(){
+  hideAuthError();
+  const email = el('loginEmail').value.trim();
+  const pass  = el('loginPassword').value;
+  if(!email||!pass){ showAuthError('Enter both email and password.'); return; }
+  setAuthLoading('login', true);
+  try {
+    await auth.signInWithEmailAndPassword(email, pass);
+    // onAuthStateChanged handles the rest
+  } catch(err){
+    showAuthError(friendlyAuthError(err.code, err.message));
+  } finally {
+    setAuthLoading('login', false);
+  }
+}
+
+async function doSignup(){
+  hideAuthError();
+  const email = el('signupEmail').value.trim();
+  const pass  = el('signupPassword').value;
+  if(!email||!pass){ showAuthError('Enter both email and password.'); return; }
+  if(pass.length<6){ showAuthError('Password should be at least 6 characters.'); return; }
+  setAuthLoading('signup', true);
+  try {
+    await auth.createUserWithEmailAndPassword(email, pass);
+    // onAuthStateChanged handles the rest
+  } catch(err){
+    showAuthError(friendlyAuthError(err.code, err.message));
+  } finally {
+    setAuthLoading('signup', false);
+  }
+}
+
+async function doGoogleSignIn(){
+  hideAuthError();
+  setAuthLoading('google', true);
+  try {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    await auth.signInWithPopup(provider);
+  } catch(err){
+    showAuthError(friendlyAuthError(err.code, err.message));
+  } finally {
+    setAuthLoading('google', false);
+  }
+}
+
+function doLogout(){
+  confirm2('Log Out','Are you sure you want to log out?',async ()=>{
+    try { await auth.signOut(); } catch(e){ toast('Logout failed: '+e.message,'error'); }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// AUTH STATE — gate the app, scope storage to the signed-in user
+// ═══════════════════════════════════════════════════════════
+auth.onAuthStateChanged(user => {
+  if(user){
+    currentUser = user;
+    el('authScreen').style.display='none';
+    el('app-root').classList.add('ready');
+    renderUserChip(user);
+    bootApp(); // load this user's data and start the app UI
+  } else {
+    currentUser = null;
+    el('app-root').classList.remove('ready');
+    el('authScreen').style.display='flex';
+    // reset auth form state
+    ['loginEmail','loginPassword','signupEmail','signupPassword'].forEach(id=>{ if(el(id)) el(id).value=''; });
+    hideAuthError();
+  }
+});
+
+function renderUserChip(user){
+  const name  = user.displayName || (user.email?user.email.split('@')[0]:'User');
+  const email = user.email || '';
+  el('userName').textContent  = name;
+  el('userEmail').textContent = email;
+  const av = el('userAvatar');
+  if(user.photoURL){
+    av.innerHTML = `<img src="${user.photoURL}" alt="">`;
+  } else {
+    av.textContent = name.charAt(0).toUpperCase();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// STATE & STORAGE — every key is scoped to the signed-in user's UID
+// so receipts/settings/theme never leak between accounts on the
+// same browser. Example real key: receiptvault_receipts_AbC123xyz
+// ═══════════════════════════════════════════════════════════
+function KEYS(){
+  const uid = currentUser ? currentUser.uid : 'anon';
+  return {
+    receipts: `receiptvault_receipts_${uid}`,
+    settings: `receiptvault_settings_${uid}`,
+    theme:    `receiptvault_theme_${uid}`,
+  };
+}
 let receipts = [];
 let settings = { apiKey:'', model:'gemini-2.5-flash' };
 let currentFile = null;
@@ -870,11 +1170,13 @@ let sortCol = 'date'; let sortDir = 'desc'; let curPage = 1; const PER_PAGE = 15
 let allCharts = {};
 
 function loadData(){
-  try { receipts = JSON.parse(localStorage.getItem(KEYS.receipts)||'[]'); } catch(_){ receipts=[]; }
-  try { const s=JSON.parse(localStorage.getItem(KEYS.settings)||'{}'); settings={...settings,...s}; } catch(_){}
+  const k = KEYS();
+  try { receipts = JSON.parse(localStorage.getItem(k.receipts)||'[]'); } catch(_){ receipts=[]; }
+  settings = { apiKey:'', model:'gemini-2.5-flash' };
+  try { const s=JSON.parse(localStorage.getItem(k.settings)||'{}'); settings={...settings,...s}; } catch(_){}
 }
-function saveReceipts(){ localStorage.setItem(KEYS.receipts, JSON.stringify(receipts)); updateStorage(); }
-function saveSettings(){ localStorage.setItem(KEYS.settings, JSON.stringify(settings)); }
+function saveReceipts(){ localStorage.setItem(KEYS().receipts, JSON.stringify(receipts)); updateStorage(); }
+function saveSettings(){ localStorage.setItem(KEYS().settings, JSON.stringify(settings)); }
 function updateStorage(){
   let used=0;
   for(const k in localStorage) if(localStorage.hasOwnProperty(k)) used+=localStorage[k].length*2;
@@ -886,11 +1188,12 @@ function updateStorage(){
 }
 
 // ═══════════════════════════════════════════════════════════
+
 // THEME
 // ═══════════════════════════════════════════════════════════
 function applyTheme(dark){
   document.documentElement.setAttribute('data-theme', dark?'dark':'light');
-  localStorage.setItem(KEYS.theme, dark?'dark':'light');
+  localStorage.setItem(KEYS().theme, dark?'dark':'light');
   el('themeIcon').className = dark?'fas fa-sun':'fas fa-moon';
   const dt = el('darkToggle');
   if(dt) dt.className = 'toggle'+(dark?' on':'');
@@ -929,19 +1232,22 @@ function renderPage(page){
   if(page==='reports')    { populateReportYears(); renderReports(); }
   if(page==='settings')   renderSettings();
 }
-document.querySelectorAll('.nav-item').forEach(b=>b.addEventListener('click',()=>navigateTo(b.dataset.page)));
-el('mobMenuBtn').addEventListener('click',()=>el('sidebar').classList.toggle('mob-open'));
-document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+function rerenderCurrentPage(){ renderPage(currentPage); }
+function renderPage(page){
+  if(page==='dashboard')  renderDashboard();
+  if(page==='receipts')   { populateFilters(); renderTable(); }
+  if(page==='analytics')  renderAnalytics();
+  if(page==='reports')    { populateReportYears(); renderReports(); }
+  if(page==='settings')   renderSettings();
+}
+// NOTE: nav-item / mobMenuBtn / themeToggle / uploadZone / file-input
+// listeners are bound once inside bootApp() after the first successful
+// login, since binding them at script-parse time (before auth resolves)
+// would either double-bind on a later boot or bind before login.
 
 // ═══════════════════════════════════════════════════════════
 // UPLOAD & FILE HANDLING
 // ═══════════════════════════════════════════════════════════
-const uploadZone = el('uploadZone');
-uploadZone.addEventListener('dragover', e=>{ e.preventDefault(); uploadZone.classList.add('drag-over'); });
-uploadZone.addEventListener('dragleave', ()=>uploadZone.classList.remove('drag-over'));
-uploadZone.addEventListener('drop', e=>{ e.preventDefault(); uploadZone.classList.remove('drag-over'); handleFiles(e.dataTransfer.files); });
-el('file-input').addEventListener('change', e=>handleFiles(e.target.files));
-
 function handleFiles(files){
   if(!files||!files.length) return;
   const file = files[0];
@@ -1680,19 +1986,33 @@ async function resizeImage(b64,mime,maxPx){
 }
 
 // ═══════════════════════════════════════════════════════════
-// INIT
+// BOOT APP — runs every time a user signs in (fresh data per UID)
 // ═══════════════════════════════════════════════════════════
-(function init(){
-  loadData();
-  const theme=localStorage.getItem(KEYS.theme)||'light';
-  document.documentElement.setAttribute('data-theme',theme);
-  el('themeIcon').className=theme==='dark'?'fas fa-sun':'fas fa-moon';
+let appBooted = false;
+function bootApp(){
+  loadData(); // loads THIS user's receipts + settings via UID-scoped keys
+  const theme = localStorage.getItem(KEYS().theme) || 'light';
+  document.documentElement.setAttribute('data-theme', theme);
+  el('themeIcon').className = theme==='dark' ? 'fas fa-sun' : 'fas fa-moon';
+  const dt = el('darkToggle'); if(dt) dt.className = 'toggle'+(theme==='dark'?' on':'');
+  killCharts();
   updateStorage();
-  renderDashboard();
-  // pre-fill API key field if saved
-  if(settings.apiKey) el('apiKeyInput').value=settings.apiKey;
-  el('modelSelect').value=settings.model||'gemini-2.5-flash';
-})();
+  navigateTo('dashboard');
+  if(settings.apiKey) el('apiKeyInput').value = settings.apiKey;
+  el('modelSelect').value = settings.model || 'gemini-2.5-flash';
+
+  if(!appBooted){
+    appBooted = true; // bind one-time UI listeners only on first boot
+    el('mobMenuBtn').addEventListener('click',()=>el('sidebar').classList.toggle('mob-open'));
+    document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+    document.querySelectorAll('.nav-item').forEach(b=>b.addEventListener('click',()=>navigateTo(b.dataset.page)));
+    const uploadZone = el('uploadZone');
+    uploadZone.addEventListener('dragover', e=>{ e.preventDefault(); uploadZone.classList.add('drag-over'); });
+    uploadZone.addEventListener('dragleave', ()=>uploadZone.classList.remove('drag-over'));
+    uploadZone.addEventListener('drop', e=>{ e.preventDefault(); uploadZone.classList.remove('drag-over'); handleFiles(e.dataTransfer.files); });
+    el('file-input').addEventListener('change', e=>handleFiles(e.target.files));
+  }
+}
 </script>
 </body>
 </html>
